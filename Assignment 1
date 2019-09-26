@@ -1,17 +1,139 @@
-Programming Assignment 1 Performance Assessment
+/*Comp 222 - Fall 2019
+ Marja Katrina Celo Centina
+ Programming Assignment 1: Performance */
 
-Objective:
+#include <stdio.h>
+#include <stdlib.h>
 
-To write a C program (not C++) that calculates the average CPI, total processing time (T), and MIPS of a sequence of instructions, given the number of instruction classes, the CPI and total count of each instruction type, and the clock rate (frequency) of the machine.
+//initialize values
+//
+int selection, classNumber, frequency;
 
-Refer to zyBooks Chapter 1 and/or the PowerPoint presentation in my Canvas Module for the correct formulas to implement.
+//pointers
+int* cpi_array;
+int* instr_array;
+int* clockCycles;
 
-The following is what the program would look like if it were run interactively. Your program will read values without using prompts.
+int sumOfInstructions;
+int sumOfClockCycles;
 
-Inputs:
+float totalCPI;
+float totalTime;
+float totalMIPS;
 
-• Clock rate of machine (MHz) • Number of instruction classes (types) • CPI of each type of instruction • Total instruction count for each type of instruction
+//procedure to read input parameters
+//
+void enter_params()
+{
+    scanf("%d", &frequency); //scans the frequency input
+    scanf("%d", &classNumber); //scans instruction classes
 
-Specification:
+    sumOfClockCycles = 0;
+    sumOfInstructions = 0;
 
-The program calculates the output based on choosing from a menu of choices, where each choice calls the appropriate procedure, where the choices are:
+    //dynamically allocating space based on the user input
+    cpi_array = (int *) malloc(sizeof(int) * classNumber);
+    instr_array = (int *) malloc(sizeof(int) * classNumber);
+    clockCycles = (int *) malloc(sizeof(int) * classNumber);
+
+
+    for(int i = 0; i < classNumber; i++) //loop to go through all instruction classes
+    {
+        scanf("%d", &cpi_array[i]); //scans for each cpi
+
+        scanf("%d", &instr_array[i]); //scans for each instruction
+        sumOfInstructions += instr_array[i]; //adds instructions
+
+        clockCycles[i] = cpi_array[i] * instr_array[i];
+        sumOfClockCycles += clockCycles[i]; //adds clock cycles
+
+        printf("\n");
+    }
+}
+
+
+//function computes average cpi
+//
+float calc_CPI()
+{
+    totalCPI = (float)sumOfClockCycles / (float)sumOfInstructions;
+}
+
+
+//function computes execution time
+//
+float calc_CPU_time()
+{
+    totalTime = (float)sumOfClockCycles / (float)frequency;
+    totalTime = totalTime * 1000;
+}
+
+
+//function computes mips
+//
+float calc_MIPS()
+{
+    totalMIPS = (float)frequency / totalCPI;
+}
+
+
+//procedure prints input values that were read
+//
+void print_params()
+{
+    printf("FREQUENCY (MHz): %d", frequency);
+    printf("\n\n");
+    printf("INSTRUCTION DISTRIBUTION");
+    printf("\n\n");
+    printf("CLASS \tCPI\tCOUNT");
+    printf("\n");
+     for(int j = 0; j < classNumber; j++) //loop to go through all instruction classes
+    {
+        printf("%d \t%d\t%d", j + 1, *(cpi_array + j), *(instr_array + j));
+        printf("\n");
+    }
+    printf("\n");
+}
+
+
+//procedure prints calculated values
+//
+void print_performance()
+{
+    printf("PERFORMANCE VALUES");
+    printf("\n\n");
+
+    printf("AVERAGE CPI \t%0.2f", totalCPI);
+    printf("\n");
+
+    printf("TIME (ms) \t%0.2f", totalTime);
+    printf("\n");
+
+    printf("MIPS \t\t%0.2f", totalMIPS);
+    printf("\n");
+}
+
+//main program keeps reading menu selection and dispatches accordingly
+//
+int main()
+{
+    do //program will execute at least once
+    {
+        scanf("%d", &selection); //scans selection from user
+        switch(selection) //case selection that will call a procedure when prompted
+        {
+            case 1: enter_params(); break; //user goes to function to enter parameters, function to print parameters also occurs
+            case 2: print_params();
+                    calc_CPI();
+                    calc_CPU_time();
+                    calc_MIPS();
+                    print_performance();
+                    break; //program prints performance and breaks out of loop
+        }
+    } while(selection != 3);
+
+    printf("\n");
+    printf("PROGRAM TERMINATED NORMALLY"); //statement will print out when user enters "3"
+
+	return 0;
+}
