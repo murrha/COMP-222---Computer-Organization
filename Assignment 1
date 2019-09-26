@@ -1,0 +1,17 @@
+Programming Assignment 1 Performance Assessment
+
+Objective:
+
+To write a C program (not C++) that calculates the average CPI, total processing time (T), and MIPS of a sequence of instructions, given the number of instruction classes, the CPI and total count of each instruction type, and the clock rate (frequency) of the machine.
+
+Refer to zyBooks Chapter 1 and/or the PowerPoint presentation in my Canvas Module for the correct formulas to implement.
+
+The following is what the program would look like if it were run interactively. Your program will read values without using prompts.
+
+Inputs:
+
+• Clock rate of machine (MHz) • Number of instruction classes (types) • CPI of each type of instruction • Total instruction count for each type of instruction
+
+Specification:
+
+The program calculates the output based on choosing from a menu of choices, where each choice calls the appropriate procedure, where the choices are:
