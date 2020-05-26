@@ -1,172 +1,336 @@
-/*
-Marja Katrina Centina
-Comp 222 - Fall 2019
-Assignment 3: Pipelining
+/*Marja Katrina Centina
+Programming Assignment 4: Cache Simulation
+Comp 222 – Fall 2019
+Meeting Time: 0930 - 1045
 */
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+//struct for a node
+struct node
+{
+    int tag;
+    int *block; //points to dynamically allocated block line
+} *cache = NULL;
+
+typedef struct node n;
+
+//dynamic array for main memory
+int *mm = NULL;
 
 //global variables
-int numOfInstr = 0;
-int i, j, k; //loop variable
+int i,j;
+int mainMem, cacheSize, blockSize, numOfLines;
+int word, tag, line;
 
-//structure for instructions
-struct in
+
+//lines to print prologue
+void printPrologue()
 {
-    char input[100];
-   int dest, reg1, reg2;
-   int delay;
-};
+    printf("Main Menu - Main Memory to Cache Memory Mapping\n");
+    printf("------------------------------------------------\n");
+    printf("1) Enter Configuration Parameters\n");
+    printf("2) Read from Cache\n");
+    printf("3) Write to Cache\n");
+    printf("4) Quit Program\n\n");
+}
 
-struct in *ptr; //pointer for instruction
-
-//function to get user input for instructions
-void getInstruction()
+//function that will check for powers of 2
+//returns 1 if it is a power of 2
+int check(int x)
 {
-printf("Enter number of instructions: ");
-scanf("%d" , &numOfInstr);
-printf("\n");
-ptr = (struct in*)malloc(numOfInstr + 1 * sizeof(struct in)); //dynamic allocation for the number of instructions user inputs
+    if(x == 0)
+        return 0;
 
-for(i = 1; i <= numOfInstr; i++) //scans each instruction
- {
-     printf("%d) ", i);
-    scanf("%s", ptr[i].input);
-
-    //gets each number value from the string and puts it to the proper struct properties
-    ptr[i].dest=ptr[i].input[1]-'0';
-    ptr[i].reg1=ptr[i].input[4]-'0';
-    ptr[i].reg2=ptr[i].input[7]-'0';
-
-    printf("%s", ptr[i].input);
-   printf("\n");
- }//end for
-
-printf("\n");
-return;
-}//end get instruction function
-
-//does the calculations for the delays and total number of cycles
-void calculate()
-{
-    for(i = 2; i <= numOfInstr; i++)
+    while(x != 1)
     {
-        ptr[i].delay = 0; //initializes each delay through loop to 0
-        if(ptr[i - 1].dest == ptr[i].reg1 || ptr[i - 1].dest == ptr[i].reg2) //if the next instruction relies on first one, delay is set to 2
+        if(x % 2 != 0)
+            return 0;
+            x = x /2 ;
+    }
+    return 1;
+}//end function
+
+//function to get user input
+void getParameters()
+{
+    //all get inputs from the user
+    printf("Enter main memory size (words): ");
+    scanf("%d", &mainMem); //scans for main memory
+    printf("\n");
+
+    printf("Enter cache size (words): ");
+    scanf("%d", &cacheSize); //scans for cache size
+    printf("\n");
+
+    printf("Enter block size (words/block): ");
+    scanf("%d", &blockSize); //scans for block size
+    printf("\n");
+
+    //Procedure to Check for Power of 2 in main memory
+   if(check(mainMem) != 1)
+    {
+        printf("*** Error - Main Memory Size is not a Power of 2\n");
+        return;
+    }
+
+    //checks if cache size is a power of 2
+    if(check(cacheSize) != 1)
+    {
+        printf("*** Error - Cache Size is not a Power of 2\n");
+        return;
+    }
+
+    //Procedure to Check for Power of 2 in block size
+    if(check(blockSize) != 1)
+    {
+        printf("*** Error - Block Size is not a Power of 2\n");
+        return;
+    }
+
+    //prints error message of block size is larger than main memory
+    if(blockSize > cacheSize)
+    {
+        printf("*** Error - Block Size is Larger than Cache Size\n");
+        return;
+    }
+
+    //prints when all parameters have no problems
+    else if(check(mainMem)== 1 && check(blockSize)== 1 && check(cacheSize) == 1 && blockSize < cacheSize)
+    {
+        //formula to get number of lines
+        numOfLines = cacheSize / blockSize;
+
+
+        //allocate space for main memory and initialize
+        mm = (int*)malloc(mainMem * sizeof(int));
+        for(i = 0; i < mainMem; i++)
         {
-            ptr[i].delay = 2;
+            mm[i] = mainMem - i; //content of main memory
         }
-        else if ((ptr[i - 2].dest == ptr[i].reg1 || ptr[i - 2].dest == ptr[i].reg2) && ptr[i-1].delay != 2) //if there's a delay between first and third register, delay is set to 1
+
+        //allocate space for cache and initialize
+        cache = (n*)malloc(numOfLines * sizeof(n));
+        for(i = 0; i < numOfLines; i++)
         {
-            ptr[i].delay = 1;
+            cache[i].block = NULL; //pointers set to null
+            cache[i].tag = -1; //sets tag as -1 (invalid)
         }
-    }//end for
+
+        //print statement when all parameters are acceptable
+        printf("*** All Input Parameters Accepted.  Starting to Process Write/Read Requests\n");
+    }
+
+    printf("\n");
+    return;
+}//end function
+
+//Procedure to Free Allocated Cache Blocks
+void freeCacheBlocks(struct node* cache)
+{
+    if(cache->block)
+    {
+        free(cache->block);
+    }
+}//end function
 
 
-    int count = 0; //variable keeps track of instructions with delays = 1 or delay = 2
-    int totalCycles = 5;
+//function to read from cache
+void read()
+{
+    //local variable to read address
+    int address;
 
-    //calculates total number of cycles
-    for(i = 1; i <= numOfInstr; i++)
+    //initializes all values to 0
+    tag = 0;
+    line = 0;
+    word = 0;
+
+
+    //scans for address to read
+    printf("Enter Main Memory Address to Read: ");
+    scanf("%d", &address);
+    printf("\n");
+
+    //checks if the address asked is greater than main memory and returns to main
+    if(address > mainMem)
+    {
+        printf("*** Error - Read Address Exceeds Memory Address Space\n");
+        return;
+    }
+
+    //calculates the tag, line, and word
+    tag = address/cacheSize;
+    line = (address % cacheSize) / blockSize;
+    word = address % blockSize;
+
+
+    //if cache is invalid
+    if(cache[line].tag == -1)
+    {
+      printf("*** Read Miss - First Load Block from Memory\n");
+
+      //allocate for empty cache
+      cache[line].block = malloc(numOfLines * sizeof(int));
+      cache[line].tag = tag;
+      cache[line].block[word]= mm[address];
+    }
+
+    //if tags do not match, replace it and get the main memory address
+    else if (cache[line].tag != tag)
+    {
+        printf("*** Read Miss - First Load Block from Memory\n");
+        cache[line].tag = tag;
+        cache[line].block[word] = mm[address];
+    }
+    //prints when everything is okay
+    else
+    {
+        printf("*** Cache Hit\n");
+    }
+
+    //print statement to display info
+     printf("*** Word %d of Cache Line %d with Tag %d contains the Value %d", word, line, cache[line].tag, cache[line].block[word]);
+
+    printf("\n");
+    return;
+}
+
+
+/* Write Cache */
+void write()
+{
+    //local variables for function
+    int address, value;
+
+    //values initialized to 0
+    tag = 0;
+    line = 0;
+    word = 0;
+
+    //scans user for address
+   printf("Enter Main Memory Address to Write: ");
+   scanf("%d", &address);
+   printf("\n");
+
+    if(address > mainMem) //prints and returns if main memory address is too big
    {
-    if(i == 1) //adds no additional cycles to the first instruction but initializes it as 5
-    {
-        totalCycles = 5;
-    }
+       scanf("%d ", &value);
+       printf("*** Error - Write Address Exceeds Memory Address Space\n");
+       return;
+   }
 
-    if(i > 1 && ptr[i].delay == 0) //adds a cycle for instructions without delays
-    {
-        totalCycles++;
-    }
-
-    if(i > 1 && ptr[i].delay == 1)
-    {
-        totalCycles++;
-    }
-    else if (i > 1 && ptr[i].delay == 2)
-    {
-        totalCycles += 2;
-    }
-
-    if(ptr[i].delay == 1 || ptr[i].delay == 2) //adds to count if there are instructions with delays
-    {
-        count++;
-    }
-   }//end for
-
-    //calculates for the total number of cycles
-   totalCycles = totalCycles + count;
-
-    //prints total number of cycles
-   printf("Total number of cycles: %d\n", totalCycles);
-}//end calculate function
-
-//prints out total number of cycles for the instruction sets
-void print()
-{
-    //local variables to print statements
-    int tab = 0;
-    int start = 0;
-
-    for(i = 1; i <= numOfInstr; i++)
-    {
-        //will add in extra tabs and cycles to the cycles if there are delays in the instructions
-        if(ptr[i].delay == 2)
-        {
-            tab += 2;
-            start += 2;
-        }
-
-        else if (ptr[i].delay == 1)
-        {
-            tab += 1;
-            start += 1;
-        }
-
-        //print statements for the program
-        printf("Instruction %d is Fetched at Cycle %d\n", i, i + start);
-         printf("%d) ", i);
-
-        for(j = 1; j <= tab; j++) //adds in tabs if there's delays
-        {
-            printf("\t");
-        }
-
-        //will create a pyramid like structure with the tabs
-        for(k = 1; k < i; k++)
-        {
-            printf("\t");
-        }
-        printf("IF\tID\tEX\tMM\tWB\n");
-    }
-
+   //scans user for value
+   printf("Enter Value to Write: ");
+   scanf("%d", &value);
    printf("\n");
+
+   //calculates tag, line, and word
+    tag = address/cacheSize;
+    line = (address % cacheSize) / blockSize;
+    word = address % blockSize;
+
+    //if cache is empty
+    if(cache[line].tag == -1)
+    {
+        printf("*** Write Miss - First Load Block from Memory\n");
+
+        //allocates for new block
+        cache[line].block = malloc(numOfLines * sizeof(int));
+        cache[line].tag = tag;
+        cache[line].block[word] = value;
+        mm[address] = cache[line].block[word];
+    }
+
+    //if tags don't match, update tag and new value
+    else if (cache[line].tag != tag)
+    {
+        printf("*** Write Miss - First Load Block from Memory\n");
+        cache[line].tag = tag;
+        cache[line].block[word] = value;
+        mm[address] = cache[line].block[word];
+    }
+
+    //for cache hits
+    else
+    {
+        printf("*** Cache Hit\n");
+        cache[line].block[word] = value;
+        mm[address] = cache[line].block[word];
+    }
+
+    //print statement to display info
+    printf("*** Word %d of Cache Line %d with Tag %d contains the Value %d ", word, line, cache[line].tag, cache[line].block[word]);
+
+
+    printf("\n");
    return;
-}//end print function
+}//end function
 
 
-
+//main program
 int main()
 {
-int selection;
-do
-{
-    //heading lines and user input statements
-    printf("Pipelined instruction performance\n");
-    printf("1) Enter instructions\t2) Determine when instructions are fetched\t3) Exit\n");
-    printf("Enter selection: ");
-    scanf("%d", &selection);
-    printf("\n");
-    switch(selection)
+    //variable to get user input
+    int selection;
+
+    //title line
+    printf("Programming Assignment 4: Cache Simulation\n");
+    printf("Comp 222 - Fall 2019\n");
+
+    do
     {
-        case 1: getInstruction(); break;
-        case 2: calculate(); print(); break;
+        //heading lines
+        printPrologue();
+
+        //gets user input
+        printf("Enter selection: ");
+        scanf("%d", &selection);
+        printf("\n");
+
+
+        //error conditions for incorrect input values
+        if(selection > 4)
+        {
+            printf("*** Error - Invalid Menu Option Selected\n");
         }
-} while(selection != 3); //program terminates when user enters "3"
+        else if(selection > 1 && cache == NULL && selection != 4)
+        {
+            printf("*** Error - Invalid Menu Option Selected\n");
+        }
 
+        //gets user input for parameters when user enters 1
+        if(selection == 1)
+        {
+            getParameters();
+        }
 
-printf("\n");
-printf("Program terminated normally");
+        //goes to read function when user enters 2 and there's memory data
+        if(selection == 2 && cache != NULL)
+        {
+            read();
+        }
 
-return 0;
+        //goes to write function when user enters 3 and there's data in memory
+        if(selection == 3 && cache != NULL)
+        {
+            write();
+        }
+
+        printf("\n");
+    }while(selection != 4); //program terminates when user enters 4
+
+    printf("\n");
+
+    //frees cache if there is cache present
+    if(cache)
+    {
+        freeCacheBlocks(cache);
+    }
+
+    //print statement to end program
+    printf("*** Memory Freed Up - Program Terminated Normally\n");
+    return 0;
 }
